@@ -172,7 +172,7 @@ python main.py --ui
 Alternatif:
 
 ```bash
-streamlit run ui/streamlit_app.py
+streamlit run streamlit_app.py
 ```
 
 ## 9. Ortam Ayarlari
@@ -234,7 +234,7 @@ Secilen yayin hedefi `Streamlit Community Cloud`.
 2. `share.streamlit.io` uzerinden GitHub hesabini bagla.
 3. `Create app` sec.
 4. Repository olarak bu repo'yu sec.
-5. Entrypoint file olarak `ui/streamlit_app.py` gir.
+5. Entrypoint file olarak `streamlit_app.py` gir.
 6. Gerekirse Python surumunu `Advanced settings` icinden sec.
 7. Deploy et.
 
@@ -242,7 +242,7 @@ Notlar:
 
 - Community Cloud repo kokunden calisir.
 - `requirements.txt` repo kokundedir.
-- Entrypoint yolu `ui/streamlit_app.py` olmalidir.
+- Entrypoint yolu olarak `streamlit_app.py` tercih edilmelidir.
 - Tema ve temel server ayarlari `.streamlit/config.toml` icinde sabitlenmistir.
 
 ## 13. Sinirliliklar
