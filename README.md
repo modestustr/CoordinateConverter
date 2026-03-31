@@ -1,158 +1,159 @@
-# Coordinate Converter
+İstediğiniz üzerine README.md içeriğindeki tüm Türkçe kelimeleri, imla kurallarına uygun şekilde Türkçe karakterlerle (ç, ğ, ı, ö, ş, ü) güncelledim:
 
-Coordinate Converter, `pyproj` ve `PROJ` uzerine kurulu bir koordinat donusum
-uygulamasidir. Streamlit arayuzu ile tekli koordinat donusumu, toplu dosya
-isleme, donusum dogrulamasi ve temel harita onizlemesi sunar.
+Coordinate Converter
 
-Surum: `1.0.0`
+Bu proje, pyproj ve PROJ üzerine kurulu bir koordinat dönüşüm
+uygulamasıdır. Streamlit arayüzü ile tekli koordinat dönüşümü, toplu dosya
+işleme, dönüşüm doğrulaması ve temel harita önizlemesi sunar.
 
-## 1. Projenin Amaci
+Sürüm: 1.0.0
 
-Bu proje, farkli koordinat referans sistemleri (CRS) arasinda donusum yaparken
-asagidaki sorunlari ayni yerde toplamak icin gelistirildi:
+## 1. Projenin Amacı
 
-- tek nokta veya batch veri donusumu
-- kaynak sistem seciminin anlamli bir onerisi
-- gecersiz veri ve kapsam disi noktalar icin acik hata mesajlari
-- donusum sonrasinda geri donus (round-trip) kontrolu
-- harita uzerinde hizli gorsel kontrol
+Bu proje, farklı koordinat referans sistemleri (CRS) arasında dönüşüm yaparken
+aşağıdaki sorunları aynı yerde toplamak için geliştirildi:
 
-Uygulama, "sayilari bir formattan digerine cevirmek" degil, geodezik olarak
-anlamli bir referans sistemi donusumu yapmak uzere tasarlanmistir.
+- Tek nokta veya batch veri dönüşümü
+- Kaynak sistem seçiminin anlamlı bir önerisi
+- Geçersiz veri ve kapsam dışı noktalar için açık hata mesajları
+- Dönüşüm sonrasında geri dönüş (round-trip) kontrolü
+- Harita üzerinde hızlı görsel kontrol
+
+Uygulama, "sayıları bir formattan diğerine çevirmek" değil, geodezik olarak
+anlamlı bir referans sistemi dönüşümü yapmak üzere tasarlanmıştır.
 
 ## 2. Bilimsel Arka Plan
 
-### 2.1 Koordinat neden tek basina yeterli degildir?
+### 2.1 Koordinat neden tek başına yeterli değildir?
 
-Bir noktanin koordinati, yalnizca sayisal bir cift degildir. O sayilarin hangi
-referans elipsoidine, hangi datum'a, hangi referans cercevesine ve hangi
-projeksiyona gore yazildigi bilinmeden anlam tam olmaz [1][2].
+Bir noktanın koordinatı, yalnızca sayısal bir çift değildir. O sayıların hangi
+referans elipsoidine, hangi datum'a, hangi referans çerçevesine ve hangi
+projeksiyona göre yazıldığı bilinmeden anlam tam olmaz [1][2].
 
-Ornek:
+Örnek:
 
-- `39.93, 32.85` gibi bir ifade cogunlukla cografi koordinattir.
-- `500000, 4400000` gibi bir ifade ise buyuk olasilikla duzleme izdusen,
-  yani projeksiyonlu bir koordinattir.
+- 39.93, 32.85 gibi bir ifade çoğunlukla coğrafi koordinattır.
+- 500000, 4400000 gibi bir ifade ise büyük olasılıkla düzleme izdüşen,
+yani projeksiyonlu bir koordinattir.
 
-Ayni fiziksel nokta, farkli datum veya farkli projeksiyon altinda farkli
-sayilarla ifade edilebilir. Bu bir hata degil, geodezinin dogal sonucudur [1].
+Aynı fiziksel nokta, farklı datum veya farklı projeksiyon altında farklı
+sayılarla ifade edilebilir. Bu bir hata değil, geodezinin doğal sonucudur [1].
 
-### 2.2 Cografi koordinat ile projeksiyon koordinati farki
+### 2.2 Coğrafi koordinat ile projeksiyon koordinatı farkı
 
-Cografi koordinatlar, elipsoid uzerindeki enlem-boylam tanimidir.
-Projeksiyon koordinatlari ise bu elipsoidal yuzeyin duzleme aktarilmis halidir.
-Bu aktarim sirasinda aci, alan, uzaklik veya yon gibi niceliklerin hepsi ayni
-anda kusursuz korunamaz; bu nedenle her projeksiyon belirli amaclara gore
-secilir [2].
+Coğrafi koordinatlar, elipsoid üzerindeki enlem-boylam tanımıdır.
+Projeksiyon koordinatları ise bu elipsoidal yüzeyin düzleme aktarılmış halidir.
+Bu aktarım sırasında açı, alan, uzaklık veya yön gibi niceliklerin hepsi aynı
+anda kusursuz korunamaz; bu nedenle her projeksiyon belirli amaçlara göre
+seçilir [2].
 
 Bu uygulamada:
 
-- cografi sistemler derece cinsinden yorumlanir
-- projeksiyon sistemleri metre cinsinden yorumlanir
-- eksen sunumu `always_xy=True` davranisina uygun olarak yapilir
+- Coğrafi sistemler derece cinsinden yorumlanır
+- Projeksiyon sistemleri metre cinsinden yorumlanır
+- Eksen sunumu always_xy=True davranışına uygun olarak yapılır
 
-### 2.3 Datum, referans cercevesi ve zaman etkisi
-
-WGS84, ITRF ailesi ve ulusal/bolgesel sistemler yalnizca farkli isimler degil,
-farkli referans tanimlaridir. Ozellikle modern yerbilim ve hassas konumlama
-uygulamalarinda referans cercevesinin zamana bagli hareketi de onemlidir [3][4].
+### 2.3 Datum, referans çerçevesi ve zaman etkisi
+WGS84, ITRF ailesi ve ulusal/bölgesel sistemler yalnızca farklı isimler değil,
+farklı datum tanımlarıdır. Özellikle modern yerbilim ve hassas konumlama
+uygulamalarında referans çerçevesinin zamana bağlı hareketi de önemlidir [3][4].
 
 Bu nedenle:
 
-- "ayni nokta neden farkli sistemlerde farkli cikiyor?" sorusunun cevabi
-  cogu zaman datum ve referans cercevesidir
-- milimetre veya santimetre duzeyindeki islerde epoch ve hiz bilgisi onemli
-  hale gelir
+- "Aynı nokta neden farklı sistemlerde farklı çıkıyor?" sorusunun cevabı
+çoğu zaman datum ve referans çerçevesidir.
+- Milimetre veya santimetre düzeyindeki işlerde epoch ve hız bilgisi önemli
+hale gelir.
 
-Bu uygulama operasyonel donusum araci olarak calisir; tam zamana bagli
-tektonik modelleme araci degildir.
+Bu uygulama operasyonel dönüşüm aracı olarak çalışır; tam zamana bağlı
+tektonik modelleme aracı değildir.
 
-### 2.4 Donusum, ters donusum ve round-trip farki
+### 2.4 Dönüşüm, ters dönüşüm ve round-trip farkı
 
-Uygulamadaki "Bilimsel Ispat ve Geri Donus Kontrolu" bolumu su mantikla calisir:
+Uygulamadaki "Bilimsel İspat ve Geri Dönüş Kontrolü" bölümü şu mantıkla çalışır:
 
-1. Kaynak koordinat hedef sisteme donusturulur.
-2. Elde edilen sonuc tekrar kaynak sisteme geri donusturulur.
-3. Ilk giris ile geri donen koordinat arasindaki fark olculur.
+1. Kaynak koordinat hedef sisteme dönüştürülür.
+2. Elde edilen sonuç tekrar kaynak sisteme geri dönüştürülür.
+3. İlk giriş ile geri dönen koordinat arasındaki fark ölçülür.
 
-Buradaki amac, donusumun sayisal tutarliligini gormektir. Kucuk round-trip
-farki iyi bir isarettir; fakat tek basina "mutlak dogruluk garantisi" degildir.
-Cunku gercek dunya hatasi su etkenlerden de etkilenir:
+Buradaki amaç, dönüşümün sayısal tutarlılığını görmektir. Küçük round-trip
+farkı iyi bir işarettir; fakat tek başına "mutlak doğruluk garantisi" değildir.
+Çünkü gerçek dünya hatası şu etkenlerden de etkilenir:
 
-- secilen kaynak CRS'in dogru olup olmamasi
-- kullanilan datum donusum modeli
-- grid tabanli duzeltmelerin mevcutlugu
-- floating-point hesaplama sinirlari
-- referans cercevesi ve epoch farklari
+- Seçilen kaynak CRS'in doğru olup olmaması
+- Kullanılan datum dönüşüm modeli
+- Grid tabanlı düzeltmelerin mevcudiyeti
+- Floating-point hesaplama sınırları
+- Referans çerçevesi ve epoch farkları
 
-Dolayisiyla:
+Dolayısıyla:
 
-- ileri donusum ve geri donusum ayni islem degildir
-- ama birbirini sinayan iki bagli islemdir
-- round-trip farki kucukse, algoritmik tutarlilik genellikle iyidir [5][6][7]
+İleri dönüşüm ve geri dönüşüm aynı işlem değildir.
+Ama birbirini sınayan iki bağlı işlemdir.
+Round-trip farkı küçükse, algoritmik tutarlılık genellikle iyidir [5][6][7].
 
-### 2.5 Dinamik UTM secimi ne yapar?
+### 2.5 Dinamik UTM seçimi ne yapar?
 
-`WGS84 / UTM (Dinamik)` hedefi secildiginde uygulama, koordinati once WGS84
-uzerine getirir ve boylama gore uygun UTM zonunu otomatik belirler. Bu pratik
-bir kolayliktir; ancak zone secimi hala cografi konuma bagli bir karar oldugu
-icin kullanicinin bolgesel baglami bilmesi gerekir [1][2].
+'WGS84 / UTM (Dinamik)' hedefi seçildiğinde uygulama, koordinatı önce WGS84
+üzerine getirir ve boylama göre uygun UTM zonunu otomatik belirler. Bu pratik
+bir kolaylıktır; ancak zone seçimi hala coğrafi konuma bağlı bir karar olduğu
+için kullanıcının bölgesel bağlamı bilmesi gerekir [1][2].
 
-## 3. Uygulamanin Bilimsel Olarak Ne Yaptigi
+## 3. Uygulamanın Bilimsel Olarak Ne Yaptığı
 
-Uygulama su asamalari izler:
+Uygulama şu aşamaları izler:
 
-1. Girdiyi ayrisir ve muhtemel sistem tipini tahmin eder.
-2. Kaynak CRS kapsam ve mantik kontrolu yapar.
-3. `pyproj` araciligiyla PROJ donusum pipeline'ini calistirir.
+1. Girdiyi ayrıştırır ve muhtemel sistem tipini tahmin eder.
+2. Kaynak CRS kapsam ve mantık kontrolü yapar.
+3. 'pyproj' aracılığıyla PROJ dönüşüm pipeline'ını çalıştırır.
 4. Sonucu hedef sistem eksen ve birimleriyle sunar.
-5. Istenirse geri donus farkini hesaplayarak numerik kontrol verir.
-6. Batch modda her satir icin durum ve hata kodu uretir.
+5. İstenirse geri dönüş farkını hesaplayarak nümerik kontrol verir.
+6. Batch modda her satır için durum ve hata kodu üretir.
 
-Bu sayede uygulama yalnizca "donusturme" yapmaz; ayni zamanda "bu sonuc neden
-guvenilir / neden supheli olabilir?" sorusuna da cevap vermeye calisir.
+Bu sayede uygulama yalnızca "dönüştürme" yapmaz; aynı zamanda "bu sonuç neden
+güvenilir / neden şüpheli olabilir?" sorusuna da cevap vermeye çalışır.
 
-## 4. Ne Zaman Guvenmeli, Ne Zaman Suphelenmeli?
+## 4. Ne Zaman Güvenmeli, Ne Zaman Şüphelenmeli?
 
-Su durumlarda sonuca daha fazla guvenilir:
+Şu durumlarda sonuca daha fazla güvenilir:
 
-- kaynak koordinat sistemi dogru secilmisse
-- nokta, secilen sistemin kapsama alanindaysa
-- round-trip farki cok kucukse
-- batch sonuclarinda satir bazli hata yoksa
+- Kaynak koordinat sistemi doğru seçilmişse
+- Nokta, seçilen sistemin kapsama alanındaysa
+- Round-trip farkı çok küçükse
+- Batch sonuçlarında satır bazlı hata yoksa
 
-Su durumlarda dikkat gerekir:
+Şu durumlarda dikkat gerekir:
 
-- kullanici kaynak sistemi tahmin ederek secmisse
-- veri farkli datumlardan karisik geldiyse
-- tarihi / ulusal / lokal grid donusumleri gerekiyorsa
-- yasal kadastro, muhendislik aplikasyonu veya santimetre alti tolerans isteniyorsa
+- Kullanıcı kaynak sistemi tahmin ederek seçmişse
+- Veri farklı datumlardan karışık geldiyse
+- Tarihi / ulusal / lokal grid dönüşümleri gerekiyorsa
+- Yasal kadastro, mühendislik aplikasyonu veya santimetre altı tolerans isteniyorsa
 
-Bu uygulama guclu bir teknik yardimcidir; ancak resmi jeodezik denetim,
-kurumsal grid dosyalari veya yasal onay mekanizmasinin yerine gecmez.
+Bu uygulama güçlü bir teknik yardımcıdır; ancak resmi jeodezik denetim,
+kurumsal grid dosyaları veya yasal onay mekanizmasının yerine geçmez.
 
-## 5. Teknik Ozellikler
+## 5. Teknik Özellikler
 
-- Tekli koordinat donusumu
-- Toplu CSV/XLSX donusumu
-- Satir bazli batch hata raporu
-- `Durum`, `Hata_Kodu`, `Hata_Mesaji` kolonlari
-- Dinamik UTM zone secimi
-- Round-trip dogrulama tablosu
-- Tarayici konumu ile baslangic doldurma
-- Harita onizlemesi
+- Tekli koordinat dönüşümü
+- Toplu CSV/XLSX dönüşümü
+- Satır bazlı batch hata raporu
+- 'Durum', 'Hata_Kodu', 'Hata_Mesajı' kolonları
+- Dinamik UTM zone seçimi
+- Round-trip doğrulama tablosu
+- Tarayıcı konumu ile başlangıç doldurma
+- Harita önizlemesi
 - Merkezi logging
-- Timeout + retry ile geocode dayanikliligi
+- Timeout + retry ile geocode dayanıklılığı
 
-## 6. Proje Yapisi
+## 6. Proje Yapısı
 
 ```text
 config/      Ayarlar ve logging
-core/        Donusum, CRS, UTM ve cozumleyici mantigi
-data/        Sistem veritabani
+core/        Dönüşüm, CRS, UTM ve çözümleyici mantığı
+data/        Sistem veritabanı
 services/    Batch, export, geocode, cihaz GPS servisleri
-ui/          Streamlit arayuzu
-tests/       Pytest senaryolari
+ui/          Streamlit arayüzü
+tests/       Pytest senaryoları
 ```
 
 ## 7. Kurulum
@@ -163,7 +164,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## 8. Calistirma
+## 8. Çalıştırma
 
 ```bash
 python main.py --ui
@@ -175,40 +176,40 @@ Alternatif:
 streamlit run streamlit_app.py
 ```
 
-## 9. Ortam Ayarlari
+## 9. Ortam Ayarları
 
-Desteklenen temel ortam degiskenleri:
+Desteklenen temel ortam değişkenleri:
 
-- `APP_ENV=dev|staging|prod`
-- `APP_VERSION=1.0.0`
-- `APP_TITLE=Coordinate Converter`
-- `MAX_UPLOAD_SIZE_MB=10`
-- `APP_LOG_LEVEL=INFO`
-- `GEOCODE_TIMEOUT_SECONDS=10`
-- `GEOCODE_MAX_RETRIES=3`
-- `GEOCODE_RETRY_BACKOFF_SECONDS=0.5`
-- `GPS_TIMEOUT_MS=10000`
+- APP_ENV=dev|staging|prod
+- APP_VERSION=1.0.0
+- APP_TITLE=Coordinate Converter
+- MAX_UPLOAD_SIZE_MB=10
+- APP_LOG_LEVEL=INFO
+- GEOCODE_TIMEOUT_SECONDS=10
+- GEOCODE_MAX_RETRIES=3
+- GEOCODE_RETRY_BACKOFF_SECONDS=0.5
+- GPS_TIMEOUT_MS=10000
 
-Streamlit Community Cloud uzerinde bunlar `Settings > Secrets` icinden
-tanimlanabilir.
+Streamlit Community Cloud üzerinde bunlar Settings > Secrets içinden
+tanımlanabilir.
 
-## 10. Batch Girdi / Cikti Sozlesmesi
+## 10. Batch Girdi / Çıktı Sözleşmesi
 
-Beklenen mantik:
+Beklenen mantık:
 
-- kullanici X ve Y kolonlarini acikca secer
-- kaynak ve hedef sistem secilir
-- her satir icin donusum ayri degerlendirilir
+- Kullanıcı X ve Y kolonlarını açıkça seçer
+- Kaynak ve hedef sistem seçilir
+- Her satır için dönüşüm ayrı değerlendirilir
 
-Batch sonucu orijinal kolanlara ek olarak sunlari uretir:
+Batch sonucu orijinal kolonlara ek olarak şunları üretir:
 
 - `Hedef_<X>`
 - `Hedef_<Y>`
 - `Durum`
 - `Hata_Kodu`
-- `Hata_Mesaji`
+- `Hata_Mesajı`
 
-Bu tasarim sayesinde bozuk satirlar sessizce yutulmaz; ayri olarak isaretlenir.
+Bu tasarım sayesinde bozuk satırlar sessizce yutulmaz; ayrı olarak işaretlenir.
 
 ## 11. Test
 
@@ -216,96 +217,98 @@ Bu tasarim sayesinde bozuk satirlar sessizce yutulmaz; ayri olarak isaretlenir.
 pytest -q
 ```
 
-Test kapsami su alanlari icerir:
+Test kapsamı şu alanları içerir:
 
-- tekli donusum davranisi
-- batch hata sozlesmesi
-- dinamik UTM davranisi
-- hata geri bildirimi
-- geocode retry mantigi
-- sidebar sistem durumu
-- ayar normalizasyonu
+- Tekli dönüşüm davranışı
+- Batch hata sözleşmesi
+- Dinamik UTM davranışı
+- Hata geri bildirimi
+- Geocode retry mantığı
+- Sidebar sistem durumu
+- Ayar normalizasyonu
 
 ## 12. Deploy
 
-Secilen yayin hedefi `Streamlit Community Cloud`.
+Seçilen yayın hedefi Streamlit Community Cloud.
 
 1. Repo'yu GitHub'a push et.
-2. `share.streamlit.io` uzerinden GitHub hesabini bagla.
-3. `Create app` sec.
-4. Repository olarak bu repo'yu sec.
-5. Entrypoint file olarak `streamlit_app.py` gir.
-6. Gerekirse Python surumunu `Advanced settings` icinden sec.
+2. `share.streamlit.io` üzerinden GitHub hesabını bağla.
+3. Create app seç.
+4. Repository olarak bu repo'yu seç.
+5. Entrypoint file olarak streamlit_app.py gir.
+6. Gerekirse Python sürümünü Advanced settings içinden seç.
 7. Deploy et.
 
 Notlar:
 
-- Community Cloud repo kokunden calisir.
-- `requirements.txt` repo kokundedir.
-- Entrypoint yolu olarak `streamlit_app.py` tercih edilmelidir.
-- Tema ve temel server ayarlari `.streamlit/config.toml` icinde sabitlenmistir.
+- Community Cloud repo kökünden çalışır.
+- requirements.txt repo kökündedir.
+- Entrypoint yolu olarak streamlit_app.py tercih edilmelidir.
+- Tema ve temel server ayarları .streamlit/config.toml içinde sabitlenmiştir.
 
-## 13. Sinirliliklar
+## 13. Sınırlılıklar
 
-- Sonuc kalitesi, secilen kaynak CRS'in dogruluguna dogrudan baglidir.
-- Grid tabanli yerel donusumlerin tumu her ortamda mevcut olmayabilir.
-- Kucuk round-trip hatasi, veri setinin kurumsal/yasal olarak kesin uyumlu
-  oldugu anlamina gelmez.
-- Tarayici GPS ve Nominatim geocode ozellikleri yardimci bile sendir;
-  geodezik cekirdekten farkli olarak dis servis bagimliligi tasir.
+- Sonuç kalitesi, seçilen kaynak CRS'in doğruluğuna doğrudan bağlıdır.
+- Grid tabanlı yerel dönüşümlerin tümü her ortamda mevcut olmayabilir.
+- Küçük round-trip hatası, veri setinin kurumsal/yasal olarak kesin uyumlu
+- olduğu anlamına gelmez.
+- Tarayıcı GPS ve Nominatim geocode özellikleri yardımcı bileşendir;
+  geodezik çekirdekten farklı olarak dış servis bağımlılığı taşır.
 
 ## 14. Bilimsel Referanslar
 
-Asagidaki kaynaklar, bu uygulamanin anlattigi temel kavramlarin bilimsel
-dayanagini olusturur:
+Aşağıdaki kaynaklar, bu uygulamanın anlattığı temel kavramların bilimsel
+dayanağını oluşturur:
 
-1. Lu, Z., Qu, Y., Qiao, S. *Geodesy: Introduction to Geodetic Datum and
-   Geodetic Systems*. Springer, 2014.
-   DOI: https://doi.org/10.1007/978-3-642-41245-5
+1. Lu, Z., Qu, Y., Qiao, S. Geodesy: Introduction to Geodetic Datum and
+Geodetic Systems. Springer, 2014.
+DOI: https://doi.org/10.1007/978-3-642-41245-5
 
-2. Grafarend, E. W., You, R.-J., Syffus, R. *Map Projections: Cartographic
-   Information Systems*. Springer, 2014.
-   DOI: https://doi.org/10.1007/978-3-642-36494-5
+2. Grafarend, E. W., You, R.-J., Syffus, R. Map Projections: Cartographic
+Information Systems. Springer, 2014.
+DOI: https://doi.org/10.1007/978-3-642-36494-5
 
 3. Altamimi, Z., Rebischung, P., Metivier, L., Collilieux, X.
-   *ITRF2014: A new release of the International Terrestrial Reference Frame
-   modeling nonlinear station motions*. Journal of Geophysical Research:
-   Solid Earth, 2016.
-   DOI: https://doi.org/10.1002/2016JB013098
+ITRF2014: A new release of the International Terrestrial Reference Frame
+modeling nonlinear station motions. Journal of Geophysical Research:
+Solid Earth, 2016.
+DOI: https://doi.org/10.1002/2016JB013098
 
 4. Altamimi, Z., Rebischung, P., Collilieux, X., Metivier, L., Chanard, K.
-   *ITRF2020: an augmented reference frame refining the modeling of nonlinear
-   station motions*. Journal of Geodesy, 2023.
-   DOI: https://doi.org/10.1007/s00190-023-01738-w
+ITRF2020: an augmented reference frame refining the modeling of nonlinear
+station motions. Journal of Geodesy, 2023.
+DOI: https://doi.org/10.1007/s00190-023-01738-w
 
-5. Watson, G. A. *Computing Helmert transformations*.
-   Journal of Computational and Applied Mathematics, 2006.
-   DOI: https://doi.org/10.1016/j.cam.2005.06.047
+5. Watson, G. A. Computing Helmert transformations.
+Journal of Computational and Applied Mathematics, 2006.
+DOI: https://doi.org/10.1016/j.cam.2005.06.047
 
 6. Featherstone, W. E., Claessens, S. J.
-   *Closed-form transformation between geodetic and ellipsoidal coordinates*.
-   Studia Geophysica et Geodaetica, 2008.
-   DOI: https://doi.org/10.1007/s11200-008-0002-6
+Closed-form transformation between geodetic and ellipsoidal coordinates.
+Studia Geophysica et Geodaetica, 2008.
+DOI: https://doi.org/10.1007/s11200-008-0002-6
 
-7. Karney, C. F. F. *Algorithms for geodesics*.
-   Journal of Geodesy, 2013.
-   DOI: https://doi.org/10.1007/s00190-012-0578-z
+7. Karney, C. F. F. Algorithms for geodesics.
+Journal of Geodesy, 2013.
+DOI: https://doi.org/10.1007/s00190-012-0578-z
 
-8. Smith, W. H. F. *Direct conversion of latitude and height from one
-   ellipsoid to another*. Journal of Geodesy, 2022.
-   DOI: https://doi.org/10.1007/s00190-022-01608-x
+8. Smith, W. H. F. Direct conversion of latitude and height from one
+ellipsoid to another. Journal of Geodesy, 2022.
+DOI: https://doi.org/10.1007/s00190-022-01608-x
 
-## 15. Yazilim Referanslari
+## 15. Yazılım Referansları
 
-Bu uygulamanin hesap cekirdegi su yazilimlara dayanir:
+Bu uygulamanın hesap çekirdeği şu yazılımlara dayanır:
 
 - PROJ:
-  DOI: https://doi.org/10.5281/zenodo.14253019
+DOI: https://doi.org/10.5281/zenodo.14253019
+
 - pyproj 3.7.1:
-  DOI: https://doi.org/10.5281/zenodo.14876934
+DOI: https://doi.org/10.5281/zenodo.14876934
+
 
 ## 16. Son Not
 
-Bu README, projeyi hem kullaniciya hem de teknik denetim yapan bir kisinin
-gozune hitap edecek sekilde hazirlandi. Amac yalnizca "nasil calisir?" sorusuna
-degil, "neden boyle calisir?" sorusuna da acik cevap verebilmektir.
+Bu README, projeyi hem kullanıcıya hem de teknik denetim yapan bir kişinin
+gözüne hitap edecek şekilde hazırlandı. Amaç yalnızca "nasıl çalışır?" sorusuna
+değil, "neden böyle çalışır?" sorusuna da açık cevap verebilmektir.
