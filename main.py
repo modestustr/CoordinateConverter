@@ -33,7 +33,7 @@ def run_ui():
     env = os.environ.copy()
     env.setdefault("PYTHONIOENCODING", "utf-8")
     subprocess.run(
-        [sys.executable, "-m", "streamlit", "run", "ui/streamlit_app.py"],
+        [sys.executable, "-m", "streamlit", "run", "streamlit_app.py"],
         env=env,
     )
 

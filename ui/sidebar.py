@@ -24,11 +24,11 @@ def _build_system_status(system_names: Sequence[str]) -> dict[str, object]:
     healthy = system_count > 0
     return {
         "healthy": healthy,
-        "label": "Sistem aktif" if healthy else "Sistem hazir degil",
+        "label": "Donusum sistemi hazir" if healthy else "Donusum sistemi hazir degil",
         "detail": (
-            f"{system_count} koordinat sistemi yuklendi."
+            f"Secilebilir {system_count} koordinat sistemi hazir."
             if healthy
-            else "Koordinat sistemleri yuklenemedi."
+            else "Kaynak ve hedef sistem listesi yuklenemedi."
         ),
         "system_count": system_count,
     }
