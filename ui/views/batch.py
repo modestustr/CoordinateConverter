@@ -6,6 +6,7 @@ import streamlit as st
 from config.settings import MAX_UPLOAD_SIZE_MB
 from ui.feedback import build_error_feedback, summarize_batch_errors
 from ui.i18n import get_language, t, translate_text
+from ui.utils.df_i18n import translate_dataframe_columns
 
 
 def _format_seconds_compact(seconds: float, lang: str = "tr") -> str:
@@ -63,8 +64,7 @@ def render_batch_conversion(controller):
             return
 
         st.info(t("batch.file_loaded", rows=len(df)))
-        st.dataframe(df.head(5))
-
+        st.dataframe(translate_dataframe_columns(df.head(5), lang))
         c1, c2 = st.columns(2)
         xc = c1.selectbox(t("batch.x_column"), df.columns)
         yc = c2.selectbox(t("batch.y_column"), df.columns)
@@ -131,8 +131,9 @@ def render_batch_conversion(controller):
                         )
                     )
                     st.caption(t("batch.warning.caption"))
+                    err_df = summarize_batch_errors(res_df, lang)
                     st.dataframe(
-                        summarize_batch_errors(res_df, lang),
+                        translate_dataframe_columns(err_df, lang),
                         hide_index=True,
                         width="stretch",
                     )
@@ -145,8 +146,7 @@ def render_batch_conversion(controller):
                     st.info(t("batch.info.browser_render"))
 
                 progress.progress(95, text=t("batch.progress.render"))
-                st.dataframe(res_df)
-
+                st.dataframe(translate_dataframe_columns(res_df, lang))
                 csv = res_df.to_csv(index=False).encode("utf-8")
                 st.download_button(
                     t("batch.download"),

@@ -1,4 +1,5 @@
 from typing import Sequence
+from ui.utils.df_i18n import translate_dataframe_columns
 
 import pandas as pd
 import streamlit as st
@@ -11,6 +12,7 @@ from config.settings import (
     SHOW_DEBUG_INFO,
 )
 from ui.i18n import LANGUAGE_LABELS, get_language, t
+
 
 def _build_system_status(system_names: Sequence[str]) -> dict[str, object]:
     system_count = len(system_names)
@@ -69,7 +71,12 @@ def render_sidebar(controller, system_names):
         st.sidebar.divider()
         st.sidebar.subheader(t("sidebar.history"))
         history_df = pd.DataFrame(st.session_state["history"]).tail(5)
-        st.sidebar.dataframe(history_df, hide_index=True)
+        display_df = translate_dataframe_columns(history_df, lang)
+        st.sidebar.dataframe(
+            display_df,
+            hide_index=True,
+            width="stretch",
+        )
 
         csv_content = controller.format_history_for_export(st.session_state["history"])
         st.sidebar.download_button(
