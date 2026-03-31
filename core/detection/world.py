@@ -1,12 +1,12 @@
-# core/detection/world.py
+from typing import Any, Dict, Tuple
+
 from .base import DetectionStrategy
-from typing import Tuple, Dict, Any
+
 
 class GlobalStrategy(DetectionStrategy):
-    priority = 1  # En düşük öncelik, en son kontrol edilir
+    priority = 1
 
     def detect_swap(self, x: float, y: float) -> Tuple[float, float]:
-        # Swaps only if x is clearly latitude and y is clearly longitude
         if abs(x) <= 90 and abs(y) > 90:
             return y, x
         return x, y
@@ -16,6 +16,7 @@ class GlobalStrategy(DetectionStrategy):
             return {
                 "system": "WGS84",
                 "confidence": 0.5,
-                "reason": "Koordinatlar global WGS84 coğrafi sınırları içerisinde."
+                "reason": "Koordinatlar global WGS84 coğrafi sınırları içinde.",
+                "reason_key": "resolver.global_bbox_reason",
             }
-        return {"system": None, "confidence": 0, "reason": "Sınır dışı."}
+        return {"system": None, "confidence": 0, "reason": "Sınır dışında.", "reason_key": None}

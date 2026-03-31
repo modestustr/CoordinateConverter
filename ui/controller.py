@@ -56,12 +56,14 @@ class AppController:
         require_existing_permission: bool = False,
         show_status: bool = True,
         widget_key: str = "get_device_location",
+        status_message: str | None = None,
     ) -> Any:
         """Fetch device location via the infrastructure service."""
         return get_device_location(
             require_existing_permission=require_existing_permission,
             show_status=show_status,
             widget_key=widget_key,
+            status_message=status_message,
         )
 
     def get_map_preview(

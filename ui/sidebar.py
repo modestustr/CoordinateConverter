@@ -10,78 +10,75 @@ from config.settings import (
     MAX_UPLOAD_SIZE_MB,
     SHOW_DEBUG_INFO,
 )
-
-
-ABOUT_TEXT = """
-Bu arac, karmasik cografi donusum sureclerini daha erisilebilir hale getirmek
-icin tasarlandi. Jeodezik motor olarak `pyproj`, arayuz tarafinda `Streamlit`
-kullanilir.
-"""
-
+from ui.i18n import LANGUAGE_LABELS, get_language, t
 
 def _build_system_status(system_names: Sequence[str]) -> dict[str, object]:
     system_count = len(system_names)
-    healthy = system_count > 0
-    return {
-        "healthy": healthy,
-        "label": "Donusum sistemi hazir" if healthy else "Donusum sistemi hazir degil",
-        "detail": (
-            f"Secilebilir {system_count} koordinat sistemi hazir."
-            if healthy
-            else "Kaynak ve hedef sistem listesi yuklenemedi."
-        ),
-        "system_count": system_count,
-    }
+    return {"healthy": system_count > 0, "system_count": system_count}
 
 
 def render_sidebar(controller, system_names):
     """Render the application sidebar."""
     status = _build_system_status(system_names)
+    lang = get_language()
 
-    st.sidebar.title("Bilgi Paneli")
-    st.sidebar.caption(f"Surum: `{APP_VERSION}` | Ortam: `{ENV.upper()}`")
+    st.sidebar.title(t("sidebar.title"))
+    st.sidebar.selectbox(
+        t("sidebar.language"),
+        options=list(LANGUAGE_LABELS.keys()),
+        format_func=lambda code: LANGUAGE_LABELS[code],
+        key="lang",
+    )
+    lang = get_language()
+    st.sidebar.caption(t("sidebar.version_env", version=APP_VERSION, env=ENV.upper()))
 
     if status["healthy"]:
-        st.sidebar.success(status["label"])
+        st.sidebar.success(t("sidebar.status.ready"))
+        st.sidebar.caption(
+            t("sidebar.status.ready_detail", count=status["system_count"])
+        )
     else:
-        st.sidebar.error(status["label"])
-    st.sidebar.caption(status["detail"])
+        st.sidebar.error(t("sidebar.status.not_ready"))
+        st.sidebar.caption(t("sidebar.status.not_ready_detail"))
 
     if SHOW_DEBUG_INFO:
         st.sidebar.caption(
-            f"Debug: upload={MAX_UPLOAD_SIZE_MB} MB, "
-            f"geocode timeout={GEOCODE_TIMEOUT_SECONDS} sn"
+            t(
+                "sidebar.debug",
+                upload_mb=MAX_UPLOAD_SIZE_MB,
+                timeout_s=GEOCODE_TIMEOUT_SECONDS,
+            )
         )
 
     st.sidebar.divider()
-    st.sidebar.info("Global EPSG veri tabanini kullanarak hassas donusum yapar.")
-    st.sidebar.markdown(ABOUT_TEXT)
+    st.sidebar.info(t("sidebar.info"))
+    st.sidebar.markdown(t("sidebar.about"))
 
-    st.sidebar.subheader("Teknolojiler")
-    st.sidebar.caption("Engine: PROJ / PyProj")
-    st.sidebar.caption("Arayuz: Streamlit")
-    st.sidebar.caption("Harita: OpenStreetMap / Esri")
-    st.sidebar.caption("Geocoding: Nominatim API")
-    st.sidebar.caption("GPS: JS-Eval")
+    st.sidebar.subheader(t("sidebar.technologies"))
+    st.sidebar.caption(t("sidebar.tech.engine"))
+    st.sidebar.caption(t("sidebar.tech.ui"))
+    st.sidebar.caption(t("sidebar.tech.map"))
+    st.sidebar.caption(t("sidebar.tech.geocoding"))
+    st.sidebar.caption(t("sidebar.tech.gps"))
 
-    st.sidebar.subheader("Veri Kaynaklari")
-    st.sidebar.caption("EPSG Registry")
-    st.sidebar.caption("SpatialReference.org")
+    st.sidebar.subheader(t("sidebar.sources"))
+    st.sidebar.caption(t("sidebar.source.epsg"))
+    st.sidebar.caption(t("sidebar.source.spatial"))
 
     if st.session_state.get("history"):
         st.sidebar.divider()
-        st.sidebar.subheader("Islem Gecmisi")
+        st.sidebar.subheader(t("sidebar.history"))
         history_df = pd.DataFrame(st.session_state["history"]).tail(5)
         st.sidebar.dataframe(history_df, hide_index=True)
 
         csv_content = controller.format_history_for_export(st.session_state["history"])
         st.sidebar.download_button(
-            "Gecmisi CSV Olarak Indir",
+            t("sidebar.download_history"),
             data=csv_content.encode("utf-8"),
             file_name="koordinat_gecmisi.csv",
             mime="text/csv",
         )
 
-        if st.sidebar.button("Gecmisi Temizle"):
+        if st.sidebar.button(t("sidebar.clear_history")):
             st.session_state["history"] = []
             st.rerun()

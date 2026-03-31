@@ -13,18 +13,18 @@ def _manual_geolocation_script() -> str:
     return f"""
         new Promise((res) => {{
             if (!navigator.geolocation) {{
-                res({{error: 'Tarayiciniz GPS destegi sunmuyor.'}});
+                res({{error_code: 'not_supported'}});
                 return;
             }}
 
             navigator.geolocation.getCurrentPosition(
                 p => res({{lat: p.coords.latitude, lon: p.coords.longitude}}),
                 e => {{
-                    let msg = 'Konum alinamadi';
-                    if (e.code === 1) msg = 'Konum izni reddedildi.';
-                    else if (e.code === 2) msg = 'Konum bilgisi mevcut degil.';
-                    else if (e.code === 3) msg = 'Zaman asimi olustu.';
-                    res({{error: msg}});
+                    let code = 'location_unavailable';
+                    if (e.code === 1) code = 'permission_denied';
+                    else if (e.code === 2) code = 'position_unavailable';
+                    else if (e.code === 3) code = 'timeout';
+                    res({{error_code: code}});
                 }},
                 {{timeout: {GPS_TIMEOUT_MS}, enableHighAccuracy: true}}
             );
@@ -36,7 +36,7 @@ def _granted_only_geolocation_script() -> str:
     return f"""
         new Promise(async (res) => {{
             if (!navigator.geolocation) {{
-                res({{error: 'Tarayiciniz GPS destegi sunmuyor.'}});
+                res({{error_code: 'not_supported'}});
                 return;
             }}
 
@@ -59,11 +59,11 @@ def _granted_only_geolocation_script() -> str:
             navigator.geolocation.getCurrentPosition(
                 p => res({{lat: p.coords.latitude, lon: p.coords.longitude}}),
                 e => {{
-                    let msg = 'Konum alinamadi';
-                    if (e.code === 1) msg = 'Konum izni reddedildi.';
-                    else if (e.code === 2) msg = 'Konum bilgisi mevcut degil.';
-                    else if (e.code === 3) msg = 'Zaman asimi olustu.';
-                    res({{error: msg}});
+                    let code = 'location_unavailable';
+                    if (e.code === 1) code = 'permission_denied';
+                    else if (e.code === 2) code = 'position_unavailable';
+                    else if (e.code === 3) code = 'timeout';
+                    res({{error_code: code}});
                 }},
                 {{timeout: {GPS_TIMEOUT_MS}, enableHighAccuracy: true}}
             );
@@ -75,6 +75,7 @@ def get_device_location(
     require_existing_permission: bool = False,
     show_status: bool = True,
     widget_key: str = "get_device_location",
+    status_message: str | None = None,
 ):
     """
     Read device location from the browser.
@@ -91,7 +92,7 @@ def get_device_location(
     )
 
     if show_status:
-        st.toast("Konum erisim izni bekleniyor...", icon="📍")
+        st.toast(status_message or "Waiting for location permission...", icon="📍")
 
     script = (
         _granted_only_geolocation_script()
@@ -109,11 +110,11 @@ def get_device_location(
         return result
 
     if isinstance(result, dict):
-        if "error" in result:
+        if "error_code" in result:
             logger.warning(
-                "GPS location request failed widget_key=%s error=%s",
+                "GPS location request failed widget_key=%s error_code=%s",
                 widget_key,
-                result["error"],
+                result["error_code"],
             )
         elif "lat" in result and "lon" in result:
             logger.info(

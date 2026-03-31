@@ -3,6 +3,8 @@ import streamlit as st
 
 def init_session_state():
     """Session state başlatma mantığını merkezileştirir."""
+    if "lang" not in st.session_state:
+        st.session_state["lang"] = "tr"
     if "src_sys" not in st.session_state:
         st.session_state["src_sys"] = "*GPS (WGS84) (deg)"
     if "tgt_sys" not in st.session_state:

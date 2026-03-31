@@ -2,8 +2,9 @@ import pandas as pd
 import streamlit as st
 
 from core.crs import format_to_dms_string
-from ui.feedback import build_error_feedback
 from ui.components.map import render_result_map
+from ui.feedback import build_error_feedback
+from ui.i18n import get_language, t, translate_text
 from ui.state import set_preset, swap_systems
 
 
@@ -15,10 +16,10 @@ def _set_coords_text(lat: float, lon: float) -> None:
     st.session_state["coords_text"] = coord_text
 
 
-def _format_pair(x: float, y: float, is_geo: bool) -> str:
+def _format_pair(x: float, y: float, is_geo: bool, lang: str) -> str:
     if is_geo:
-        return f"Lat: {y:.8f}°, Lon: {x:.8f}°"
-    return f"X: {x:.3f}, Y: {y:.3f}"
+        return translate_text("single.result.latlon", lang, lat=y, lon=x)
+    return translate_text("single.result.xy", lang, x=x, y=y)
 
 
 def _format_diff(value: float, src_info: dict) -> str:
@@ -27,13 +28,13 @@ def _format_diff(value: float, src_info: dict) -> str:
     return f"{value:.{precision}f} {unit}"
 
 
-def _format_accuracy(value: float) -> str:
+def _format_accuracy(value: float, lang: str) -> str:
     if value is None or value < 0:
-        return "Belirtilmedi"
+        return translate_text("single.result.not_specified", lang)
     return f"{value:.3f} m"
 
 
-def _build_roundtrip_table(res: dict) -> pd.DataFrame:
+def _build_roundtrip_table(res: dict, lang: str) -> pd.DataFrame:
     src_info = res["src_info"]
     x_label = src_info.get("x_label", "X")
     y_label = src_info.get("y_label", "Y")
@@ -45,22 +46,26 @@ def _build_roundtrip_table(res: dict) -> pd.DataFrame:
     return pd.DataFrame(
         [
             {
-                "Adım": "Orijinal giriş",
+                translate_text("single.table.step", lang): translate_text("single.table.original", lang),
                 x_label: f"{res['input_x']:.{precision}f}",
                 y_label: f"{res['input_y']:.{precision}f}",
             },
             {
-                "Adım": "Geri dönüş sonrası",
+                translate_text("single.table.step", lang): translate_text("single.table.roundtrip", lang),
                 x_label: f"{back_x:.{precision}f}",
                 y_label: f"{back_y:.{precision}f}",
             },
             {
-                "Adım": "Mutlak fark",
+                translate_text("single.table.step", lang): translate_text("single.table.abs_diff", lang),
                 x_label: _format_diff(diff_x, src_info),
                 y_label: _format_diff(diff_y, src_info),
             },
         ]
     )
+
+
+def _translate_location_error(loc: dict, lang: str) -> str:
+    return translate_text(f"gps.error.{loc.get('error_code', 'location_unavailable')}", lang)
 
 
 def _handle_initial_location(controller) -> None:
@@ -71,6 +76,7 @@ def _handle_initial_location(controller) -> None:
     if not st.session_state.get("gps_auto_pending"):
         return
 
+    lang = get_language()
     loc = controller.get_gps_location(
         require_existing_permission=True,
         show_status=False,
@@ -82,7 +88,7 @@ def _handle_initial_location(controller) -> None:
     st.session_state["gps_auto_pending"] = False
     if "lat" in loc and "lon" in loc:
         _set_coords_text(loc["lat"], loc["lon"])
-        st.toast("Tarayıcı izni bulundu, mevcut konum yüklendi.", icon="📍")
+        st.toast(translate_text("single.location.auto_loaded", lang), icon="📍")
         st.rerun()
 
 
@@ -90,139 +96,147 @@ def _handle_manual_location(controller) -> None:
     if not st.session_state.get("gps_active"):
         return
 
+    lang = get_language()
     loc = controller.get_gps_location(
         require_existing_permission=False,
         show_status=True,
         widget_key="manual_device_location",
+        status_message=translate_text("gps.waiting_permission", lang),
     )
     if not loc:
         return
 
-    if "error" not in loc and "lat" in loc and "lon" in loc:
+    if "error_code" not in loc and "lat" in loc and "lon" in loc:
         _set_coords_text(loc["lat"], loc["lon"])
-        st.toast("Konum başarıyla alındı!", icon="✅")
+        st.toast(translate_text("single.location.manual_success", lang), icon="✅")
         st.session_state["gps_active"] = False
         st.rerun()
 
-    if "error" in loc:
-        st.error(f"⚠️ {loc['error']}")
+    if "error_code" in loc:
+        st.error(f"⚠️ {_translate_location_error(loc, lang)}")
         st.session_state["gps_active"] = False
 
 
-def _render_result_summary(res: dict) -> None:
+def _render_result_summary(res: dict, lang: str) -> None:
     with st.container(border=True):
         st.caption(f"{res['t_info']['name']} • {res['t_meta']['description']}")
         if res["t_info"]["is_geo"]:
-            st.write(f"## { _format_pair(res['output_x'], res['output_y'], True) }")
+            st.write(f"## {_format_pair(res['output_x'], res['output_y'], True, lang)}")
             st.write(
-                f"**DMS:** `{format_to_dms_string(res['output_y'], True)}` , "
-                f"`{format_to_dms_string(res['output_x'], False)}`"
+                translate_text(
+                    "single.result.dms",
+                    lang,
+                    lat_dms=format_to_dms_string(res["output_y"], True),
+                    lon_dms=format_to_dms_string(res["output_x"], False),
+                )
             )
         else:
-            st.write(
-                f"## {res['t_info']['x_label']}: {res['output_x']:.3f} | "
-                f"{res['t_info']['y_label']}: {res['output_y']:.3f}"
-            )
+            st.write(f"## {_format_pair(res['output_x'], res['output_y'], False, lang)}")
 
 
-def _render_scientific_proof(res: dict) -> None:
+def _render_scientific_proof(res: dict, lang: str) -> None:
     verification = res["verification"]
     src_info = res["src_info"]
     diff_x, diff_y = verification["diff"]
     max_diff = max(diff_x, diff_y)
     back_x, back_y = verification["back"]
 
-    with st.expander("🔬 Bilimsel İspat ve Geri Dönüş Kontrolü", expanded=True):
-        st.caption(
-            "Bu kontrol, noktayı önce hedef sisteme dönüştürür; ardından aynı sonucu "
-            "yeniden kaynak sisteme geri çevirir. Geri dönen koordinat ile ilk giriş "
-            "arasındaki fark ne kadar küçükse dönüşüm sayısal olarak o kadar tutarlıdır."
-        )
+    with st.expander(t("single.proof.title"), expanded=True):
+        st.caption(t("single.proof.caption"))
 
         if verification["ok"]:
             st.success(
-                f"Dönüşüm tutarlı görünüyor. Maksimum geri dönüş farkı "
-                f"{_format_diff(max_diff, src_info)}."
+                t("single.proof.ok", value=_format_diff(max_diff, src_info))
             )
         else:
             st.warning(
-                f"Geri dönüş kontrolünde beklenenden yüksek sapma görüldü. "
-                f"Maksimum fark {_format_diff(max_diff, src_info)}."
+                t("single.proof.warn", value=_format_diff(max_diff, src_info))
             )
 
         c1, c2, c3 = st.columns(3)
-        c1.metric("Maks. fark", _format_diff(max_diff, src_info))
+        c1.metric(t("single.proof.max_diff"), _format_diff(max_diff, src_info))
         c2.metric(f"Δ {src_info.get('x_label', 'X')}", _format_diff(diff_x, src_info))
         c3.metric(f"Δ {src_info.get('y_label', 'Y')}", _format_diff(diff_y, src_info))
 
-        st.write(f"**Dönüşüm yöntemi:** {res['t_meta']['description']}")
-        st.write(f"**PROJ accuracy:** {_format_accuracy(res['t_meta'].get('accuracy', -1))}")
-        st.write(f"**Çözülmüş hedef CRS:** `{res['resolved_tgt']}`")
+        st.write(t("single.proof.method", method=res["t_meta"]["description"]))
         st.write(
-            f"**Geri dönüş koordinatı:** `{_format_pair(back_x, back_y, src_info.get('is_geo', False))}`"
+            t(
+                "single.proof.accuracy",
+                accuracy=_format_accuracy(res["t_meta"].get("accuracy", -1), lang),
+            )
         )
-        st.dataframe(_build_roundtrip_table(res), hide_index=True, width="stretch")
+        st.write(t("single.proof.resolved_crs", crs=res["resolved_tgt"]))
+        st.write(
+            t(
+                "single.proof.back_coords",
+                coords=_format_pair(
+                    back_x,
+                    back_y,
+                    src_info.get("is_geo", False),
+                    lang,
+                ),
+            )
+        )
+        st.dataframe(_build_roundtrip_table(res, lang), hide_index=True, width="stretch")
 
 
 def render_single_conversion(controller, all_names):
     _handle_initial_location(controller)
     _handle_manual_location(controller)
+    lang = get_language()
 
     col_input, col_gps = st.columns([3, 1], vertical_alignment="bottom")
     with col_input:
         raw_input = st.text_input(
-            "📍 Koordinatları Yapıştırın",
+            t("single.input.label"),
             key="coords_text",
             placeholder="39.93, 32.85",
         )
         st.session_state["coords"]["text"] = raw_input
-        st.caption(
-            "Tarayıcıda konum izni zaten varsa bulunduğunuz konum otomatik yüklenir; "
-            "aksi durumda varsayılan Ankara koordinatları kullanılır."
-        )
+        st.caption(t("single.input.caption"))
 
     with col_gps:
         if st.button(
-            "🛰️ Konumumu Al",
+            t("single.button.location"),
             width="stretch",
             disabled=st.session_state.get("gps_active"),
         ):
             st.session_state["gps_active"] = True
             st.rerun()
 
-    with st.expander("🚀 Hızlı Senaryolar"):
+    with st.expander(t("single.scenarios.title")):
         p_col1, p_col2, p_col3, p_col4, p_col5 = st.columns(5)
-        if p_col1.button("🌍 Google → UTM"):
+        if p_col1.button(t("single.scenario.google_utm")):
             set_preset("*GPS (WGS84) (deg)", "WGS84 / UTM (Dinamik)")
-        if p_col2.button("🛰️ GPS → Web"):
+        if p_col2.button(t("single.scenario.gps_web")):
             set_preset("*GPS (WGS84) (deg)", "WGS 84 / Pseudo-Mercator")
-        if p_col3.button("🏗️ WGS84 → ED50"):
+        if p_col3.button(t("single.scenario.wgs84_ed50")):
             set_preset("*GPS (WGS84) (deg)", "ED50 (GCS)")
-        if p_col4.button("🇹🇷 ITRF96 → GPS"):
+        if p_col4.button(t("single.scenario.itrf96_gps")):
             set_preset("ITRF96 / TM30 (Türkiye)", "*GPS (WGS84) (deg)")
-        if p_col5.button("📐 ED50 → UTM 6°"):
+        if p_col5.button(t("single.scenario.ed50_utm")):
             set_preset("ED50 / UTM zone 35N (6 Derece)", "*GPS (WGS84) (deg)")
 
     main_c1, main_c2, main_c3 = st.columns([10, 2, 10], vertical_alignment="bottom")
     with main_c1:
-        src_sys = st.selectbox("📥 Kaynak", all_names, key="src_sys")
+        src_sys = st.selectbox(t("single.source"), all_names, key="src_sys")
         if raw_input and st.session_state["auto_detect"]:
             res = controller.get_input_details(raw_input)
             suggestion = res["suggestion"]
             if suggestion["system"] and suggestion["system"] != src_sys:
                 st.info(
-                    f"🧠 Öneri: {suggestion['system']} "
-                    f"(%{suggestion['confidence'] * 100:.0f})"
+                    f"{t('single.suggestion', system=suggestion['system'], confidence=suggestion['confidence'] * 100)} "
+                    f"- {translate_text(suggestion.get('reason_key') or '', lang) if suggestion.get('reason_key') else suggestion.get('reason', '')}"
                 )
-                if st.button("Uygula"):
+                if st.button(t("single.apply")):
                     st.session_state["src_sys"] = suggestion["system"]
                     st.rerun()
     with main_c2:
         st.button("🔄", on_click=swap_systems, width="stretch")
     with main_c3:
-        tgt_sys = st.selectbox("📤 Hedef", all_names, key="tgt_sys")
+        tgt_sys = st.selectbox(t("single.target"), all_names, key="tgt_sys")
 
-    if st.button("🚀 DÖNÜŞTÜR", type="primary", width="stretch"):
+    if st.button(t("single.convert"), type="primary", width="stretch"):
         try:
             res = controller.convert(raw_input, src_sys, tgt_sys)
             st.session_state["last_result"] = res
@@ -230,13 +244,19 @@ def render_single_conversion(controller, all_names):
                 {
                     "Kaynak": src_sys,
                     "Hedef": tgt_sys,
-                    "Girdi": _format_pair(res["input_x"], res["input_y"], res["src_info"]["is_geo"]),
-                    "Sonuç": _format_pair(res["output_x"], res["output_y"], res["t_info"]["is_geo"]),
-                    "Tutarlılık": _format_diff(max(res["verification"]["diff"]), res["src_info"]),
+                    "Girdi": _format_pair(
+                        res["input_x"], res["input_y"], res["src_info"]["is_geo"], lang
+                    ),
+                    "Sonuç": _format_pair(
+                        res["output_x"], res["output_y"], res["t_info"]["is_geo"], lang
+                    ),
+                    "Tutarlılık": _format_diff(
+                        max(res["verification"]["diff"]), res["src_info"]
+                    ),
                 }
             )
         except Exception as e:
-            feedback = build_error_feedback(e)
+            feedback = build_error_feedback(e, lang)
             st.error(f"⚠️ {feedback['title']}")
             st.caption(feedback["detail"])
             if feedback["hint"]:
@@ -244,8 +264,8 @@ def render_single_conversion(controller, all_names):
 
     if st.session_state["last_result"]:
         res = st.session_state["last_result"]
-        _render_result_summary(res)
-        _render_scientific_proof(res)
+        _render_result_summary(res, lang)
+        _render_scientific_proof(res, lang)
 
         map_lon, map_lat, _ = controller.get_map_preview(
             res["output_x"], res["output_y"], res["resolved_tgt"]

@@ -3,23 +3,16 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
+from ui.i18n import translate_text
 
-ERROR_TITLES = {
-    "INVALID_FORMAT": "Koordinat biçimi anlaşılamadı",
-    "OUT_OF_BOUNDS": "Koordinat seçilen sistemin kapsama alanı dışında",
-    "INVALID_GEO_RANGE": "Enlem veya boylam aralığı geçersiz",
-    "RESOLUTION_ERROR": "Koordinat sistemi çözümlenemedi",
-    "NAN_COORDINATE": "Eksik koordinat değeri bulundu",
-    "DYNAMIC_SOURCE_FORBIDDEN": "Dinamik UTM kaynak olarak kullanılamaz",
-}
 
-ERROR_HINTS = {
-    "INVALID_FORMAT": "Girdiyi `enlem, boylam` veya `X, Y` biçiminde tekrar deneyin.",
-    "OUT_OF_BOUNDS": "Kaynak koordinat sistemini ve girdi değerlerini yeniden kontrol edin.",
-    "INVALID_GEO_RANGE": "Boylam `-180..180`, enlem `-90..90` aralığında olmalıdır.",
-    "RESOLUTION_ERROR": "Seçilen CRS adını ve sistem eşleşmesini doğrulayın.",
-    "NAN_COORDINATE": "Boş, eksik veya sayısal olmayan değerleri temizleyin.",
-    "DYNAMIC_SOURCE_FORBIDDEN": "Dinamik UTM yalnızca hedef sistem olarak kullanılmalıdır.",
+ERROR_CODES = {
+    "INVALID_FORMAT",
+    "OUT_OF_BOUNDS",
+    "INVALID_GEO_RANGE",
+    "RESOLUTION_ERROR",
+    "NAN_COORDINATE",
+    "DYNAMIC_SOURCE_FORBIDDEN",
 }
 
 
@@ -31,35 +24,69 @@ def parse_error_message(raw_error: Any) -> tuple[Optional[str], str]:
     return None, text
 
 
-def build_error_feedback(raw_error: Any) -> Dict[str, Optional[str]]:
+def build_error_feedback(raw_error: Any, lang: str = "tr") -> Dict[str, Optional[str]]:
     code, detail = parse_error_message(raw_error)
     return {
         "code": code,
-        "title": ERROR_TITLES.get(code, "İşlem tamamlanamadı"),
-        "detail": detail or "Beklenmeyen bir hata oluştu.",
-        "hint": ERROR_HINTS.get(code),
+        "title": (
+            translate_text(f"error.title.{code}", lang)
+            if code in ERROR_CODES
+            else translate_text("feedback.generic_title", lang)
+        ),
+        "detail": (
+            translate_text(f"error.detail.{code}", lang)
+            if code in ERROR_CODES
+            else detail or translate_text("feedback.generic_detail", lang)
+        ),
+        "hint": (
+            translate_text(f"error.hint.{code}", lang)
+            if code in ERROR_CODES
+            else None
+        ),
     }
 
 
-def summarize_batch_errors(df: pd.DataFrame) -> pd.DataFrame:
+def summarize_batch_errors(df: pd.DataFrame, lang: str = "tr") -> pd.DataFrame:
+    columns = [
+        translate_text("feedback.summary.type", lang),
+        translate_text("feedback.summary.count", lang),
+        translate_text("feedback.summary.sample", lang),
+    ]
     if "Durum" not in df.columns or "Hata_Kodu" not in df.columns:
-        return pd.DataFrame(columns=["Hata Tipi", "Adet", "Örnek Mesaj"])
+        return pd.DataFrame(columns=columns)
 
     error_df = df[df["Durum"] == "ERROR"].copy()
     if error_df.empty:
-        return pd.DataFrame(columns=["Hata Tipi", "Adet", "Örnek Mesaj"])
+        return pd.DataFrame(columns=columns)
 
     error_df["Hata Tipi"] = error_df["Hata_Kodu"].map(
-        lambda code: ERROR_TITLES.get(code, code or "Bilinmeyen hata")
+        lambda code: (
+            translate_text(f"error.title.{code}", lang)
+            if code in ERROR_CODES
+            else code or translate_text("feedback.summary.unknown", lang)
+        )
+    )
+    error_df["Ornek_Mesaj"] = error_df["Hata_Kodu"].map(
+        lambda code: (
+            translate_text(f"error.detail.{code}", lang)
+            if code in ERROR_CODES
+            else translate_text("feedback.generic_detail", lang)
+        )
     )
     summary = (
         error_df.groupby(["Hata_Kodu", "Hata Tipi"], dropna=False)
         .agg(
             Adet=("Hata_Kodu", "size"),
-            Ornek_Mesaj=("Hata_Mesaji", "first"),
+            Ornek_Mesaj=("Ornek_Mesaj", "first"),
         )
         .reset_index()
-        .rename(columns={"Ornek_Mesaj": "Örnek Mesaj"})
-        .sort_values("Adet", ascending=False)
+        .rename(
+            columns={
+                "Hata Tipi": translate_text("feedback.summary.type", lang),
+                "Adet": translate_text("feedback.summary.count", lang),
+                "Ornek_Mesaj": translate_text("feedback.summary.sample", lang),
+            }
+        )
+        .sort_values(translate_text("feedback.summary.count", lang), ascending=False)
     )
-    return summary[["Hata Tipi", "Adet", "Örnek Mesaj"]]
+    return summary[columns]
