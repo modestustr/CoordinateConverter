@@ -34,6 +34,12 @@ def _format_accuracy(value: float, lang: str) -> str:
     return f"{value:.3f} m"
 
 
+def _build_copy_payload(res: dict) -> str:
+    if res["t_info"]["is_geo"]:
+        return f"{res['output_y']:.8f}, {res['output_x']:.8f}"
+    return f"{res['output_x']:.3f}, {res['output_y']:.3f}"
+
+
 def _build_roundtrip_table(res: dict, lang: str) -> pd.DataFrame:
     src_info = res["src_info"]
     x_label = src_info.get("x_label", "X")
@@ -132,6 +138,36 @@ def _render_result_summary(res: dict, lang: str) -> None:
             )
         else:
             st.write(f"## {_format_pair(res['output_x'], res['output_y'], False, lang)}")
+
+
+def _render_copy_action(controller, res: dict, lang: str) -> None:
+    if st.button(t("single.copy.button"), key="copy_result_button", width="content"):
+        st.session_state["copy_request_id"] += 1
+        st.session_state["copy_result_pending"] = True
+
+    if not st.session_state.get("copy_result_pending"):
+        return
+
+    payload = _build_copy_payload(res)
+    request_id = st.session_state.get("copy_request_id", 0)
+    result = controller.copy_text(
+        payload,
+        widget_key=f"copy_result_clipboard_{request_id}",
+    )
+
+    if result is None:
+        st.caption(t("single.copy.pending"))
+        return
+
+    st.session_state["copy_result_pending"] = False
+    status = result.get("status") if isinstance(result, dict) else None
+
+    if status == "success":
+        st.toast(t("single.copy.success"), icon="📋")
+    elif status == "not_supported":
+        st.warning(t("single.copy.not_supported"))
+    else:
+        st.warning(t("single.copy.error"))
 
 
 def _render_scientific_proof(res: dict, lang: str) -> None:
@@ -240,6 +276,7 @@ def render_single_conversion(controller, all_names):
         try:
             res = controller.convert(raw_input, src_sys, tgt_sys)
             st.session_state["last_result"] = res
+            st.session_state["copy_result_pending"] = False
             st.session_state["history"].append(
                 {
                     "Kaynak": src_sys,
@@ -265,6 +302,7 @@ def render_single_conversion(controller, all_names):
     if st.session_state["last_result"]:
         res = st.session_state["last_result"]
         _render_result_summary(res, lang)
+        _render_copy_action(controller, res, lang)
         _render_scientific_proof(res, lang)
 
         map_lon, map_lat, _ = controller.get_map_preview(

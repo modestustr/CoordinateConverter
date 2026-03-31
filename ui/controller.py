@@ -8,6 +8,7 @@ import pandas as pd
 from core.crs import ErrorCode, get_crs_unit_info
 from core.input_resolver import InputResolver
 from services.batch import process_batch_transform
+from services.device.clipboard import copy_text_to_clipboard
 from services.device.gps import get_device_location
 from services.export import export_history_to_csv
 from services.system import get_validated_systems
@@ -65,6 +66,10 @@ class AppController:
             widget_key=widget_key,
             status_message=status_message,
         )
+
+    def copy_text(self, text: str, widget_key: str = "copy_to_clipboard") -> Any:
+        """Copy text to the browser clipboard via the infrastructure service."""
+        return copy_text_to_clipboard(text=text, widget_key=widget_key)
 
     def get_map_preview(
         self, x: float, y: float, src_sys: str

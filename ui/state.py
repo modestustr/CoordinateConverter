@@ -29,6 +29,10 @@ def init_session_state():
         st.session_state["gps_auto_attempted"] = False
     if "gps_auto_pending" not in st.session_state:
         st.session_state["gps_auto_pending"] = False
+    if "copy_result_pending" not in st.session_state:
+        st.session_state["copy_result_pending"] = False
+    if "copy_request_id" not in st.session_state:
+        st.session_state["copy_request_id"] = 0
 
 
 def set_preset(src: str, tgt: str):

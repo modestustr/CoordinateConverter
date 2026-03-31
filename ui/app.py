@@ -10,7 +10,7 @@ from ui.state import init_session_state
 from ui.views.batch import render_batch_conversion
 from ui.views.single import render_single_conversion
 
-APP_CONTEXT_VERSION = "controller-v2"
+APP_CONTEXT_VERSION = "controller-v3"
 
 
 def main():

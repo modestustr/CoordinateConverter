@@ -11,9 +11,11 @@ from core.coord import CoordConverter
 from core.crs import CRSResolutionError, ErrorCode
 import services.geocode as geocode_service
 from ui.feedback import build_error_feedback, summarize_batch_errors
+from ui.i18n import LANGUAGE_LABELS, normalize_language, translate_text
 from ui.controller import AppController
 from ui.sidebar import _build_system_status
 from ui.views.batch import _estimate_batch_duration_range, _format_seconds_compact
+from ui.views.single import _build_copy_payload
 
 
 @pytest.fixture
@@ -180,6 +182,45 @@ def test_batch_duration_estimate_increases_with_row_count():
 def test_format_seconds_compact_handles_minutes():
     assert _format_seconds_compact(8.4) == "8 sn"
     assert _format_seconds_compact(65) == "1 dk 5 sn"
+
+
+def test_build_copy_payload_uses_lat_lon_for_geographic_results():
+    payload = _build_copy_payload(
+        {
+            "output_x": 32.85,
+            "output_y": 39.93,
+            "t_info": {"is_geo": True},
+        }
+    )
+
+    assert payload == "39.93000000, 32.85000000"
+
+
+def test_build_copy_payload_uses_x_y_for_projected_results():
+    payload = _build_copy_payload(
+        {
+            "output_x": 441234.56789,
+            "output_y": 4478901.23456,
+            "t_info": {"is_geo": False},
+        }
+    )
+
+    assert payload == "441234.568, 4478901.235"
+
+
+def test_language_labels_include_requested_languages():
+    for code in ("tr", "en", "de", "fr", "ru", "el", "it", "es"):
+        assert code in LANGUAGE_LABELS
+
+
+def test_language_alias_and_locale_contract():
+    assert normalize_language("gr") == "el"
+    assert translate_text("single.copy.button", "de") == "Ergebnis kopieren"
+    assert translate_text("single.copy.button", "fr") == "Copier le résultat"
+    assert translate_text("single.copy.button", "ru") == "Скопировать результат"
+    assert translate_text("single.copy.button", "el") == "Αντιγραφή αποτελέσματος"
+    assert translate_text("single.copy.button", "it") == "Copia risultato"
+    assert translate_text("single.copy.button", "es") == "Copiar resultado"
 
 
 def test_stress_test_generator_matches_example_schema():

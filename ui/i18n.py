@@ -1,12 +1,26 @@
+import json
+from pathlib import Path
 from typing import Any
 
 import streamlit as st
 
 
 DEFAULT_LANGUAGE = "tr"
+FALLBACK_LANGUAGE = "en"
+LANGUAGE_ALIASES = {
+    "gr": "el",
+}
+LOCALE_DIR = Path(__file__).with_name("locales")
+
 LANGUAGE_LABELS = {
     "tr": "Türkçe",
     "en": "English",
+    "de": "Deutsch",
+    "fr": "Français",
+    "it": "Italiano",
+    "es": "Español",
+    "ru": "Русский",
+    "el": "Ελληνικά",
 }
 
 
@@ -73,6 +87,11 @@ TRANSLATIONS = {
         "single.result.xy": "X: {x:.3f}, Y: {y:.3f}",
         "single.result.dms": "**DMS:** `{lat_dms}` , `{lon_dms}`",
         "single.result.not_specified": "Belirtilmedi",
+        "single.copy.button": "Sonucu Kopyala",
+        "single.copy.pending": "Kopyalama isteği tarayıcıya gönderildi...",
+        "single.copy.success": "Dönüşüm sonucu panoya kopyalandı.",
+        "single.copy.not_supported": "Tarayıcınız panoya kopyalama özelliğini desteklemiyor.",
+        "single.copy.error": "Sonuç kopyalanamadı.",
         "single.proof.title": "🔬 Bilimsel İspat ve Geri Dönüş Kontrolü",
         "single.proof.caption": "Bu kontrol, noktayı önce hedef sisteme dönüştürür; ardından aynı sonucu yeniden kaynak sisteme geri çevirir. Geri dönen koordinat ile ilk giriş arasındaki fark ne kadar küçükse dönüşüm sayısal olarak o kadar tutarlıdır.",
         "single.proof.ok": "Dönüşüm tutarlı görünüyor. Maksimum geri dönüş farkı {value}.",
@@ -211,6 +230,11 @@ TRANSLATIONS = {
         "single.result.xy": "X: {x:.3f}, Y: {y:.3f}",
         "single.result.dms": "**DMS:** `{lat_dms}` , `{lon_dms}`",
         "single.result.not_specified": "Not specified",
+        "single.copy.button": "Copy Result",
+        "single.copy.pending": "The copy request was sent to the browser...",
+        "single.copy.success": "The conversion result was copied to the clipboard.",
+        "single.copy.not_supported": "Your browser does not support clipboard copy.",
+        "single.copy.error": "The result could not be copied.",
         "single.proof.title": "🔬 Scientific Proof and Round-Trip Check",
         "single.proof.caption": "This check first transforms the point to the target system and then converts the result back to the source system. The smaller the difference between the returned coordinate and the original input, the more numerically consistent the transformation is.",
         "single.proof.ok": "The transformation looks consistent. Maximum round-trip difference: {value}.",
@@ -290,16 +314,38 @@ TRANSLATIONS = {
 }
 
 
+def _load_locale_overrides() -> dict[str, dict[str, str]]:
+    locales: dict[str, dict[str, str]] = {}
+    for code in LANGUAGE_LABELS:
+        locale_path = LOCALE_DIR / f"{code}.json"
+        if not locale_path.exists():
+            continue
+
+        payload = json.loads(locale_path.read_text(encoding="utf-8"))
+        if isinstance(payload, dict):
+            locales[code] = payload
+
+    return locales
+
+
+TRANSLATIONS.update(_load_locale_overrides())
+
+
 def normalize_language(lang: str | None) -> str:
-    return lang if lang in LANGUAGE_LABELS else DEFAULT_LANGUAGE
+    if not lang:
+        return DEFAULT_LANGUAGE
+
+    resolved_lang = LANGUAGE_ALIASES.get(str(lang).strip().lower(), str(lang).strip().lower())
+    return resolved_lang if resolved_lang in LANGUAGE_LABELS else DEFAULT_LANGUAGE
 
 
 def translate_text(key: str, lang: str | None = None, **kwargs: Any) -> str:
     resolved_lang = normalize_language(lang)
-    template = TRANSLATIONS.get(resolved_lang, {}).get(key)
-    if template is None:
-        template = TRANSLATIONS[DEFAULT_LANGUAGE].get(key, key)
-    return template.format(**kwargs) if kwargs else template
+    for candidate_lang in (resolved_lang, FALLBACK_LANGUAGE, DEFAULT_LANGUAGE):
+        template = TRANSLATIONS.get(candidate_lang, {}).get(key)
+        if template is not None:
+            return template.format(**kwargs) if kwargs else template
+    return key
 
 
 def get_language() -> str:
