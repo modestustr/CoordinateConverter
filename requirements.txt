@@ -1,0 +1,10 @@
+streamlit==1.54.0
+pyproj==3.7.1
+pandas==2.3.3
+numpy==1.26.4
+folium==0.20.0
+streamlit-folium==0.26.1
+streamlit-js-eval==1.0.0
+requests==2.32.5
+openpyxl==3.1.5
+pytest==9.0.2
