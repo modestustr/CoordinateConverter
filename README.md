@@ -1,5 +1,3 @@
-İstediğiniz üzerine README.md içeriğindeki tüm Türkçe kelimeleri, imla kurallarına uygun şekilde Türkçe karakterlerle (ç, ğ, ı, ö, ş, ü) güncelledim:
-
 Coordinate Converter
 
 Bu proje, pyproj ve PROJ üzerine kurulu bir koordinat dönüşüm
